@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>英検1級 単語トレーナー</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2f5fd0">
+<link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f6f6f3;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#d9d9d2;--ac:#2f5fd0;--ok:#1f8a4c;--ng:#c43a31;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16171a;--fg:#ecece8;--mut:#9a9a94;--card:#202226;--bd:#35373d;--ac:#7ea2ff;--ok:#4cc88a;--ng:#ff7b72}}
+:root[data-theme="dark"]{--bg:#16171a;--fg:#ecece8;--mut:#9a9a94;--card:#202226;--bd:#35373d;--ac:#7ea2ff;--ok:#4cc88a;--ng:#ff7b72}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 16px}h2{font-size:15px;margin:0 0 8px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+button{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac);text-align:center;font-weight:600}
+button.s{width:auto;padding:8px 12px;font-size:14px}
+.opts{display:grid;gap:8px;margin-top:14px}.opts button.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 18%,var(--card))}
+.opts button.ng{border-color:var(--ng);background:color-mix(in srgb,var(--ng) 18%,var(--card))}
+.q{font-size:28px;font-weight:700;word-break:break-word}.q.j{font-size:22px}
+.meta{display:flex;justify-content:space-between;color:var(--mut);font-size:13px}
+.ex{margin-top:12px;padding:10px 12px;border-left:3px solid var(--ng);background:var(--bg);border-radius:6px}
+.bar{display:flex;gap:2px;height:46px;align-items:flex-end;margin-top:6px}.bar div{flex:1;background:var(--ac);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.bar span{position:absolute;top:100%;left:0;right:0;text-align:center;font-size:10px;color:var(--mut)}
+.g{display:grid;grid-template-columns:1fr 90px;gap:8px 12px;align-items:center}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 8px;width:100%}
+textarea{height:110px;font-size:13px}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.toast{background:var(--ac);color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+small{color:var(--mut)}
+</style></head><body><main id="app"></main>
+<script>
+const KEY='eiken1_app',DEF={n:20,every:100,bonus:3,dec:3,inc:1,mode:'mix'};
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function parse(t){return t.split(/\r?\n/).map(l=>{l=l.trim();if(!l)return null;let p;
+ if(l.includes('\t'))p=l.split('\t');else if(l.includes('|'))p=l.split('|');else{const a=l.split(',');p=[a[0],a[1],a.slice(2).join(',')]}
+ p=p.map(x=>(x||'').trim());return p[0]&&p[1]?{en:p[0],ja:p[1],ex:p[2]||'',exja:p[3]||'',d:1}:null}).filter(Boolean)}
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.words)S={words:[],cfg:{...DEF},total:0};S.cfg={...DEF,...S.cfg};S.url=S.url||'words.json';
+async function sync(){try{const r=await fetch(S.url+(S.url.includes('?')?'&':'?')+'t='+Date.now());if(!r.ok)throw 0;const j=await r.json();if(!Array.isArray(j)||j.length<4)throw 0;
+const m=new Map(S.words.map(w=>[w.en,w.d]));S.words=j.filter(x=>x.en&&x.ja).map(x=>({en:x.en,ja:x.ja,ex:x.ex||'',exja:x.exja||'',d:m.has(x.en)?m.get(x.en):1}));
+S.synced=new Date().toLocaleString('ja-JP');save();return S.words.length}catch(e){return -1}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let Q=null,msg='';
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function home(){const W=S.words,cnt=Array(11).fill(0);W.forEach(w=>cnt[w.d]++);const mx=Math.max(...cnt,1),c=S.cfg;
+ app.innerHTML=`<h1>英検1級 単語トレーナー</h1>${msg?`<div class="toast">${esc(msg)}</div>`:''}
+ <div class="card"><h2>学習状況（${W.length}語 ／ 累計回答 ${S.total}問）</h2>
+ <div class="bar" style="margin-bottom:18px">${cnt.map((n,i)=>`<div style="height:${n/mx*100}%"><span>${i}</span></div>`).join('')}</div>
+ <small>横軸は苦手度。苦手度0は出題されません（習得済み：${cnt[0]}語）。</small>
+ <div class="row"><button class="p" id="go" ${W.length-cnt[0]<1||W.length<4?'disabled':''}>演習スタート（${c.n}問）</button></div></div>
+ <div class="card"><h2>パラメーター</h2><div class="g">
+ <label>1回の演習の問題数</label><input type="number" id="n" min="1" value="${c.n}">
+ <label>ボーナス間隔（何問ごと）</label><input type="number" id="every" min="1" value="${c.every}">
+ <label>ボーナス最大語数（0→+1）</label><input type="number" id="bonus" min="0" value="${c.bonus}">
+ <label>正解で下げる苦手度</label><input type="number" id="dec" min="0" max="10" value="${c.dec}">
+ <label>不正解で上げる苦手度</label><input type="number" id="inc" min="0" max="10" value="${c.inc}">
+ <label>出題形式</label><select id="mode"><option value="mix">日英混在</option><option value="je">日→英のみ</option><option value="ej">英→日のみ</option></select></div>
+ <div class="row"><button class="s" id="sv">設定を保存</button></div></div>
+ <div class="card"><h2>サーバーから単語帳を取得</h2><small>JSON配列（en, ja, ex, exja）のURL。苦手度は単語ごとに引き継がれます。${S.synced?'最終取得：'+esc(S.synced):''}</small>
+ <input id="u" value="${esc(S.url)}" style="margin-top:8px"><div class="row"><button class="s" id="sy">今すぐ取得</button></div></div>
+ <div class="card"><h2>単語帳の手動読み込み</h2>
+ <small>1行1語。「英単語,日本語,例文」または「英単語|日本語|例文」（タブ区切りも可）。例文は省略可。</small>
+ <textarea id="imp" placeholder="abate,和らぐ,The storm began to abate."></textarea>
+ <div class="row"><button class="s" id="add">追加（既存語の進捗は保持）</button><button class="s" id="rep">全置換</button></div></div>
+ <div class="card"><h2>学習データのバックアップ</h2><small>ブラウザのデータを消すと失われるため、時々コピーして保管してください。</small>
+ <textarea id="bk"></textarea><div class="row"><button class="s" id="ex">書き出し</button><button class="s" id="im">この内容で復元</button></div></div>`;
+ $('#mode').value=c.mode;
+ $('#sy').onclick=async()=>{S.url=$('#u').value.trim()||'words.json';const n=await sync();msg=n<0?'取得に失敗しました。URLと接続を確認してください':n+'語を取得しました';home()};
+ const rd=()=>{['n','every','bonus','dec','inc'].forEach(k=>c[k]=Math.max(k=='n'||k=='every'?1:0,Math.min(k=='dec'||k=='inc'?10:99999,parseInt($('#'+k).value)||DEF[k])));c.mode=$('#mode').value;save()};
+ $('#sv').onclick=()=>{rd();msg='設定を保存しました';home()};
+ $('#go').onclick=()=>{rd();Q={left:c.n,done:0,cor:0};msg='';next()};
+ const merge=(list,keep)=>{const m=new Map(S.words.map(w=>[w.en,w]));
+  S.words=keep?S.words.slice():[];S.seedV=2;list.forEach(w=>{const o=m.get(w.en);if(keep&&o){o.ja=w.ja;o.ex=w.ex||o.ex;o.exja=w.exja||o.exja}else{if(o)w.d=o.d;S.words.push(w)}});save()};
+ $('#add').onclick=()=>{const l=parse($('#imp').value);if(!l.length)return;merge(l,true);msg=`${l.length}行を取り込みました`;home()};
+ $('#rep').onclick=()=>{const l=parse($('#imp').value);if(l.length<4||!confirm('単語帳を置き換えます。よろしいですか？'))return;merge(l,false);msg=`${l.length}語に置き換えました`;home()};
+ $('#ex').onclick=()=>{$('#bk').value=JSON.stringify(S);$('#bk').select()};
+ $('#im').onclick=()=>{try{const o=JSON.parse($('#bk').value);if(!o.words||o.words.length<4)throw 0;S=o;S.url=o.url||'words.json';S.cfg={...DEF,...S.cfg};save();msg='復元しました';home()}catch(e){alert('データの形式が正しくありません')}}}
+function next(){
+ if(Q.left<=0){msg=`演習終了：${Q.cor} / ${Q.done} 問正解`;Q=null;return home()}
+ let note='';
+ if(S.total>0&&S.total%S.cfg.every===0&&!Q.bonusAt!==S.total){}
+ const c=S.words.filter(w=>w.d>0);if(!c.length){msg='出題できる単語がありません（すべて習得済み）';Q=null;return home()}
+ const tot=c.reduce((a,w)=>a+w.d,0);let r=Math.random()*tot,w=c[0];
+ for(const x of c){r-=x.d;if(r<=0){w=x;break}if(x===c[c.length-1])w=x}
+ if(c.length>1&&w===Q.last)w=rnd(c.filter(x=>x!==Q.last));
+ Q.last=w;Q.cur=w;Q.dir=S.cfg.mode=='mix'?rnd(['je','ej']):S.cfg.mode;Q.ans=false;
+ const f=Q.dir=='je'?'en':'ja',o=new Set([w[f]]);let g=0;
+ while(o.size<4&&g++<500)o.add(rnd(S.words)[f]);
+ Q.opts=[...o].sort(()=>Math.random()-.5);draw(Q.toast);Q.toast=''}
+function draw(t,pick){const w=Q.cur,f=Q.dir=='je'?'en':'ja',ok=w[f];
+ app.innerHTML=`${t?`<div class="toast">${esc(t)}</div>`:''}<div class="meta"><span>残り ${Q.left}問 ／ 正解 ${Q.cor}</span><span>苦手度 ${w.d}</span></div>
+ <div class="card"><div class="q ${Q.dir=='je'?'j':''}">${esc(Q.dir=='je'?w.ja:w.en)}</div>
+ <div class="opts">${Q.opts.map((o,i)=>`<button data-i="${i}" class="${Q.ans?(o===ok?'ok':(o===pick?'ng':'')):''}" ${Q.ans?'disabled':''}>${i+1}. ${esc(o)}</button>`).join('')}</div>
+ ${Q.ans?`<div class="ex"><b>${esc(w.en)}</b>：${esc(w.ja)}<br>${esc(w.ex||'（例文なし）')}${w.exja?`<br><small>${esc(w.exja)}</small>`:''}</div><div class="row"><button class="p" id="nx">次へ（Enter）</button></div>`:''}</div>
+ <div class="row"><button class="s" id="qt">演習を終了</button></div>`;
+ document.querySelectorAll('.opts button').forEach(b=>b.onclick=()=>answer(Q.opts[b.dataset.i]));
+ if($('#nx'))$('#nx').onclick=advance;$('#qt').onclick=()=>{Q=null;msg='';home()}}
+function answer(pick){if(Q.ans)return;const w=Q.cur,f=Q.dir=='je'?'en':'ja',ok=pick===w[f];
+ Q.ans=true;Q.left--;Q.done++;S.total++;let t='';
+ if(S.total%S.cfg.every===0){const z=S.words.filter(x=>x.d===0).sort(()=>Math.random()-.5).slice(0,S.cfg.bonus);
+  z.forEach(x=>x.d=1);if(z.length)t=`復習ボーナス：${z.map(x=>x.en).join('、')} の苦手度を1にしました`}
+ Q.toast=t;
+ if(ok){Q.cor++;w.d=Math.max(0,w.d-S.cfg.dec);save();next()}
+ else{w.d=Math.min(10,w.d+S.cfg.inc);save();draw(t,pick)}}
+function advance(){if(Q&&Q.ans)next()}
+document.addEventListener('keydown',e=>{if(!Q)return;if(Q.ans){if(e.key==='Enter')advance()}else if(/^[1-4]$/.test(e.key))answer(Q.opts[e.key-1])});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+(async()=>{const n=await sync();msg=n<0?(S.words.length?'オフライン：保存済みの単語帳を使用中':'単語帳を取得できません。URLを確認してください'):n+'語を取得しました';home()})();
+</script></body></html>
