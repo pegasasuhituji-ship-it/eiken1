@@ -8,7 +8,7 @@
 :root{--bg:#f6f6f3;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#d9d9d2;--ac:#2f5fd0;--ok:#1f8a4c;--ng:#c43a31;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16171a;--fg:#ecece8;--mut:#9a9a94;--card:#202226;--bd:#35373d;--ac:#7ea2ff;--ok:#4cc88a;--ng:#ff7b72}}
 :root[data-theme="dark"]{--bg:#16171a;--fg:#ecece8;--mut:#9a9a94;--card:#202226;--bd:#35373d;--ac:#7ea2ff;--ok:#4cc88a;--ng:#ff7b72}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bgimg,none) center/cover fixed no-repeat var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 main{max-width:640px;margin:0 auto;padding:16px}
 h1{font-size:20px;margin:8px 0 16px}h2{font-size:15px;margin:0 0 8px;color:var(--mut)}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
@@ -27,9 +27,12 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 textarea{height:110px;font-size:13px}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .toast{background:var(--ac);color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14px}
 small{color:var(--mut)}
+body::before{content:"";position:fixed;inset:0;background:var(--bg);opacity:var(--bgop,0);z-index:-1;pointer-events:none}
 </style></head><body><main id="app"></main>
 <script>
-const KEY='eiken1_app',DEF={n:20,every:100,bonus:3,dec:3,inc:1,mode:'mix'};
+const BG='eiken1_bg',BO='eiken1_bgop',KEY='eiken1_app',DEF={n:20,every:100,bonus:3,dec:3,inc:1,mode:'mix'};
+const bo=()=>{try{const v=parseFloat(localStorage.getItem(BO));return isNaN(v)?.65:v}catch(e){return .65}};
+function applyBg(){try{const d=localStorage.getItem(BG),r=document.documentElement.style;r.setProperty('--bgimg',d?`url(${d})`:'none');r.setProperty('--bgop',d?bo():0)}catch(e){}}
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function parse(t){return t.split(/\r?\n/).map(l=>{l=l.trim();if(!l)return null;let p;
@@ -63,9 +66,17 @@ function home(){const W=S.words,cnt=Array(11).fill(0);W.forEach(w=>cnt[w.d]++);c
  <small>1行1語。「英単語,日本語,例文」または「英単語|日本語|例文」（タブ区切りも可）。例文は省略可。</small>
  <textarea id="imp" placeholder="abate,和らぐ,The storm began to abate."></textarea>
  <div class="row"><button class="s" id="add">追加（既存語の進捗は保持）</button><button class="s" id="rep">全置換</button></div></div>
+ <div class="card"><h2>背景画像</h2><small>スマホの写真から選べます。画像はこの端末内にだけ保存され、外には送られません。</small>
+ <input type="file" id="bgf" accept="image/*" style="margin-top:8px">
+ <div class="g" style="margin-top:10px"><label>画像の濃さ</label><input type="range" id="bgo" min="0" max="100" value="${Math.round((1-bo())*100)}"></div>
+ <div class="row"><button class="s" id="bgx">背景を解除</button></div></div>
  <div class="card"><h2>学習データのバックアップ</h2><small>ブラウザのデータを消すと失われるため、時々コピーして保管してください。</small>
  <textarea id="bk"></textarea><div class="row"><button class="s" id="ex">書き出し</button><button class="s" id="im">この内容で復元</button></div></div>`;
  $('#mode').value=c.mode;
+ $('#bgf').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c2=document.createElement('canvas');c2.width=Math.round(im.width*k);c2.height=Math.round(im.height*k);c2.getContext('2d').drawImage(im,0,0,c2.width,c2.height);
+  try{localStorage.setItem(BG,c2.toDataURL('image/jpeg',.8));msg='背景画像を設定しました'}catch(x){msg='画像を保存できませんでした'}URL.revokeObjectURL(im.src);applyBg();home()};im.onerror=()=>{msg='画像を読み込めませんでした';home()};im.src=URL.createObjectURL(f)};
+ $('#bgo').oninput=e=>{try{localStorage.setItem(BO,String(1-e.target.value/100))}catch(x){}applyBg()};
+ $('#bgx').onclick=()=>{try{localStorage.removeItem(BG)}catch(x){}applyBg();msg='背景画像を解除しました';home()};
  $('#sy').onclick=async()=>{S.url=$('#u').value.trim()||'words.json';const n=await sync();msg=n<0?'取得に失敗しました。URLと接続を確認してください':n+'語を取得しました';home()};
  const rd=()=>{['n','every','bonus','dec','inc'].forEach(k=>c[k]=Math.max(k=='n'||k=='every'?1:0,Math.min(k=='dec'||k=='inc'?10:99999,parseInt($('#'+k).value)||DEF[k])));c.mode=$('#mode').value;save()};
  $('#sv').onclick=()=>{rd();msg='設定を保存しました';home()};
@@ -105,6 +116,7 @@ function answer(pick){if(Q.ans)return;const w=Q.cur,f=Q.dir=='je'?'en':'ja',ok=p
  else{w.d=Math.min(10,w.d+S.cfg.inc);save();draw(t,pick)}}
 function advance(){if(Q&&Q.ans)next()}
 document.addEventListener('keydown',e=>{if(!Q)return;if(Q.ans){if(e.key==='Enter')advance()}else if(/^[1-4]$/.test(e.key))answer(Q.opts[e.key-1])});
+applyBg();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async()=>{const n=await sync();msg=n<0?(S.words.length?'オフライン：保存済みの単語帳を使用中':'単語帳を取得できません。URLを確認してください'):n+'語を取得しました';home()})();
 </script></body></html>
