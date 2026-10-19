@@ -67,7 +67,7 @@ function home(){const W=S.words,cnt=Array(11).fill(0);W.forEach(w=>cnt[w.d]++);c
  <textarea id="imp" placeholder="abate,和らぐ,The storm began to abate."></textarea>
  <div class="row"><button class="s" id="add">追加（既存語の進捗は保持）</button><button class="s" id="rep">全置換</button></div></div>
  <div class="card"><h2>背景画像</h2><small>スマホの写真から選べます。画像はこの端末内にだけ保存され、外には送られません。</small>
- <input type="file" id="bgf" accept="image/*" style="margin-top:8px">
+ <input type="file" id="bgf" accept="image/*" style="margin-top:18px">
  <div class="g" style="margin-top:10px"><label>画像の濃さ</label><input type="range" id="bgo" min="0" max="100" value="${Math.round((1-bo())*100)}"></div>
  <div class="row"><button class="s" id="bgx">背景を解除</button></div></div>
  <div class="card"><h2>学習データのバックアップ</h2><small>ブラウザのデータを消すと失われるため、時々コピーして保管してください。</small>
